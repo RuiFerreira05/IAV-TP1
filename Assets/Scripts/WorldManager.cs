@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 public class WorldManager : MonoBehaviour
 {
-    [Header("Refer�ncias")]
+    [Header("Referencias")]
     public Transform player;
     public GameObject chunkPrefab;
     public Material chunkMaterial;
 
-    [Header("Configura��o")]
+    [Header("Configuracao")]
     public int renderDistance = 3;
     public int chunkSize = 16;
     public int chunksPerFrame = 2;

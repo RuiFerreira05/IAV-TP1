@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -24,6 +25,7 @@ public class Chunk : MonoBehaviour
     public float seaLevel = 4f;
     public float maxHeight = 40f;
     public float detailAmplitude = 1.5f;
+    public int carvingThreshold = 5;
 
     //void Start()
     //{
@@ -64,6 +66,33 @@ public class Chunk : MonoBehaviour
         return neighbor.chunkData[localX, localY, localZ].isSolid;
     }
 
+    Block.BlockType NeighbourType(int x, int y, int z)
+    {
+        if (x >= 0 && x < chunkSize &&
+            y >= 0 && y < chunkSize &&
+            z >= 0 && z < chunkSize)
+            return chunkData[x, y, z].type;
+
+        Vector3Int thisCoord = new Vector3Int(
+            (int)transform.position.x / chunkSize,
+            (int)transform.position.y / chunkSize,
+            (int)transform.position.z / chunkSize
+        );
+        Vector3Int neighborCoord = new Vector3Int(
+            thisCoord.x + (x < 0 ? -1 : x >= chunkSize ? 1 : 0),
+            thisCoord.y + (y < 0 ? -1 : y >= chunkSize ? 1 : 0),
+            thisCoord.z + (z < 0 ? -1 : z >= chunkSize ? 1 : 0)
+        );
+
+        Chunk neighbor = worldManager.GetChunk(neighborCoord);
+        if (neighbor == null || neighbor.chunkData == null) return Block.BlockType.NONE;
+
+        int localX = ((x % chunkSize) + chunkSize) % chunkSize;
+        int localY = ((y % chunkSize) + chunkSize) % chunkSize;
+        int localZ = ((z % chunkSize) + chunkSize) % chunkSize;
+        return neighbor.chunkData[localX, localY, localZ].type;
+    }
+
     public void InitializeChunk()
     {
         chunkData = new Block[chunkSize, chunkSize, chunkSize];
@@ -96,14 +125,18 @@ public class Chunk : MonoBehaviour
                     float finalDensity = finalHeight - worldY + densityNoise;
                     bool solid = finalDensity > densityThreshold;
 
-                    if (solid && y > 1)
+                    bool cave_air = false;
+                    if (solid && y > 1 && y < carvingThreshold)
                     {
                         float cx = (worldX + noiseOffsetX) * caveScale;
                         float cy = worldY * caveScale;
                         float cz = (worldZ + noiseOffsetZ) * caveScale;
                         float caveNoise = Perlin3D(cx, cy, cz);
                         if (caveNoise > caveThreshold)
+                        {
                             solid = false;
+                            cave_air = true;
+                        }
                     }
 
                     if (solid)
@@ -117,7 +150,17 @@ public class Chunk : MonoBehaviour
                             type = Block.BlockType.DIRT;
                         }
                     }
-                    else type = Block.BlockType.AIR;
+                    else
+                    {
+                        if (cave_air)
+                        {
+                            type = Block.BlockType.CAVE_AIR;
+                        }
+                        else
+                        {
+                            type = Block.BlockType.AIR;
+                        }
+                    }
 
                     chunkData[x, y, z] = new Block(type, new Vector3(x, y, z));
                 }
@@ -154,9 +197,23 @@ public class Chunk : MonoBehaviour
                 for (int y = 0; y < chunkSize; y++)
                 {
                     float worldY = transform.position.y + y;
+
                     if (chunkData[x, y, z].isSolid && !HasSolidNeighbour(x, y + 1, z) && worldY > grassHeight)
                     {
                         chunkData[x, y, z].type = Block.BlockType.GRASS;
+                    }
+
+                    if (chunkData[x, y, z].isSolid && !HasSolidNeighbour(x, y + 1, z))
+                    {
+                        if (NeighbourType(x, y+1, z) == Block.BlockType.AIR)
+                        {
+
+                            chunkData[x, y, z].type = Block.BlockType.GRASS;
+                        }
+                        else if(NeighbourType(x, y + 1, z) == Block.BlockType.CAVE_AIR)
+                        {
+                            chunkData[x, y, z].type = Block.BlockType.STONE;
+                        }
                     }
                 }
             }
@@ -201,7 +258,7 @@ public class Chunk : MonoBehaviour
                         by > 1 && by < chunkSize &&
                         bz >= 0 && bz < chunkSize)
                     {
-                        chunkData[bx, by, bz] = new Block(Block.BlockType.AIR, new Vector3(bx, by, bz));
+                        chunkData[bx, by, bz] = new Block(Block.BlockType.CAVE_AIR, new Vector3(bx, by, bz));
                     }
                 }
     }

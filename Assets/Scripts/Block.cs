@@ -17,13 +17,13 @@ public class Block
     static readonly Vector3 v6 = new Vector3(0.5f, 0.5f, -0.5f);
     static readonly Vector3 v7 = new Vector3(-0.5f, 0.5f, -0.5f);
 
-    public enum BlockType { GRASS, DIRT, STONE, AIR, BEDROCK }
+    public enum BlockType { GRASS, DIRT, STONE, AIR, BEDROCK, CAVE_AIR, NONE}
     public BlockType type;
     public Block(BlockType type, Vector3 position)
     {
         this.type = type;
         this.position = position;
-        isSolid = (type != BlockType.AIR);
+        isSolid = (type != BlockType.AIR && type != BlockType.CAVE_AIR);
     }
 
     public static Vector2[] GetUVs(CubeFace face, BlockType type)

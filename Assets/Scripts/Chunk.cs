@@ -215,6 +215,22 @@ public class Chunk : MonoBehaviour
                             chunkData[x, y, z].type = Block.BlockType.STONE;
                         }
                     }
+                    else if(chunkData[x, y, z].isSolid && NeighbourType(x - 1, y, z) == Block.BlockType.CAVE_AIR)
+                    {
+                        chunkData[x, y, z].type = Block.BlockType.STONE;
+                    }
+                    else if (chunkData[x, y, z].isSolid && NeighbourType(x + 1, y, z) == Block.BlockType.CAVE_AIR)
+                    {
+                        chunkData[x, y, z].type = Block.BlockType.STONE;
+                    }
+                    else if (chunkData[x, y, z].isSolid && NeighbourType(x, y, z - 1) == Block.BlockType.CAVE_AIR)
+                    {
+                        chunkData[x, y, z].type = Block.BlockType.STONE;
+                    }
+                    else if (chunkData[x, y, z].isSolid && NeighbourType(x, y, z + 1) == Block.BlockType.CAVE_AIR)
+                    {
+                        chunkData[x, y, z].type = Block.BlockType.STONE;
+                    }
                 }
             }
         }
@@ -238,7 +254,7 @@ public class Chunk : MonoBehaviour
         }
     }
 
-    static void CarveAt(
+    static void CarveAt(  
         Block[,,] chunkData, int chunkSize,
         Vector3Int worldOffset, Vector3 center, float radius)
     {

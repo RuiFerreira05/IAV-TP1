@@ -119,18 +119,19 @@ public class Chunk : MonoBehaviour
         {
             for (int z = 0; z < chunkSize; z++)
             {
+                float worldX = transform.position.x + x;
+                float worldZ = transform.position.z + z;
+
+                float continentalness = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, continentalnessOctaves, continentalnessScale);
+                float baseHeight = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, baseHeightOctaves, baseHeightScale);
+                float detail = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, detailOctaves, detailScale);
+
+                float finalHeight = Mathf.Lerp(seaLevel, maxHeight, continentalness * baseHeight) + detail * detailAmplitude;
+
                 for (int y = 0; y < chunkSize; y++)
                 {
                     Block.BlockType type;
-                    float worldX = transform.position.x + x;
                     float worldY = transform.position.y + y;
-                    float worldZ = transform.position.z + z;
-
-                    float continentalness = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, continentalnessOctaves, continentalnessScale);
-                    float baseHeight = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, baseHeightOctaves, baseHeightScale);
-                    float detail = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, detailOctaves, detailScale);
-
-                    float finalHeight = Mathf.Lerp(seaLevel, maxHeight, continentalness * baseHeight) + detail * detailAmplitude;
 
                     float densityNoise = Perlin3D((worldX + noiseOffsetX) * offsetScale, (worldY + noiseOffsetY) * offsetScale, (worldZ + noiseOffsetZ) * offsetScale);
 
@@ -169,9 +170,38 @@ public class Chunk : MonoBehaviour
         }
 
         Vector3Int chunkPos = new Vector3Int((int)transform.position.x / chunkSize, (int)transform.position.y / chunkSize, (int)transform.position.z / chunkSize);
-        Vector3 wormStart = new Vector3(transform.position.x + chunkSize / 2f, transform.position.y + chunkSize / 2f, transform.position.z + chunkSize / 2f);
 
-        CarveWorm(chunkData, chunkSize, chunkPos, wormStart, wormSteps, wormRadius, wormStepSize, wormDirectionScale, wormVerticalBias, wormNoiseOffsetNy, wormNoiseOffsetNz);
+        // Calculate how far a worm can possibly travel (in chunks)
+        int searchRadius = Mathf.CeilToInt((wormSteps * wormStepSize) / chunkSize);
+
+        // Simulate worms starting from THIS chunk, AND all chunks within travel radius!
+        for (int cx = -searchRadius; cx <= searchRadius; cx++)
+        {
+            for (int cy = -searchRadius; cy <= searchRadius; cy++)
+            {
+                for (int cz = -searchRadius; cz <= searchRadius; cz++)
+                {
+                    // Calculate the world grid position of this specific neighbor
+                    Vector3Int neighborWormChunkPos = chunkPos + new Vector3Int(cx, cy, cz);
+
+                    // Start the worm in the center of that neighbor chunk
+                    Vector3 wormStart = new Vector3(
+                        neighborWormChunkPos.x * chunkSize + chunkSize / 2f,
+                        neighborWormChunkPos.y * chunkSize + chunkSize / 2f,
+                        neighborWormChunkPos.z * chunkSize + chunkSize / 2f
+                    );
+
+                    // CarveWorm will trace the path, but CarveAt naturally ignores 
+                    // any blocks that fall outside of OUR local chunkData array!
+                    CarveWorm(
+                        chunkData, chunkSize, chunkPos, wormStart,
+                        wormSteps, wormRadius, wormStepSize,
+                        wormDirectionScale, wormVerticalBias,
+                        wormNoiseOffsetNy, wormNoiseOffsetNz
+                    );
+                }
+            }
+        }
     }
 
     public void DecorateChunk()

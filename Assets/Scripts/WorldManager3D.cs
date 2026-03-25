@@ -16,9 +16,10 @@ public class WorldManager3D : MonoBehaviour
 	public int chunksPerFrame = 2;
 	public int chunksDown = 0;   // how many chunk layers below Y=0
 	public int chunksUp = 3;     // how many chunk layers above Y=0
+	public bool removeFarChunks = true;
 
-	// Changed from Vector2Int to Vector3Int
-	public Dictionary<Vector3Int, GameObject> activeChunks = new();
+    // Changed from Vector2Int to Vector3Int
+    public Dictionary<Vector3Int, GameObject> activeChunks = new();
 	private Vector2Int lastPlayerChunk = new Vector2Int(int.MinValue, int.MinValue);
 
 	private Coroutine buildRoutine;
@@ -63,7 +64,7 @@ public class WorldManager3D : MonoBehaviour
 			lastPlayerChunk = current;
 			if (buildRoutine != null)
 				StopCoroutine(buildRoutine);
-			RemoveDistantChunks(current);
+			if (removeFarChunks) RemoveDistantChunks(current);
 			buildRoutine = StartCoroutine(BuildChunks(GetNeededChunks(current)));
 		}
 	}

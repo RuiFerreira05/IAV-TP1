@@ -44,13 +44,14 @@ public class Chunk : MonoBehaviour
     public int carvingThreshold = 5;
 
     [Header("Cave Worm Settings")]
-    public int wormSteps = 25;
-    public float wormRadius = 2f;
+    public int wormSteps = 50;
+    public float wormRadius = 1f;
     public float wormStepSize = 2f;
     public float wormDirectionScale = 0.1f;
     public float wormVerticalBias = 0.5f;
     public float wormNoiseOffsetNy = 100f;
     public float wormNoiseOffsetNz = 200f;
+    [Range(0, 1)] public float wormSpawnChance = 0.3f;
 
     bool HasSolidNeighbour(int x, int y, int z)
     {
@@ -181,24 +182,34 @@ public class Chunk : MonoBehaviour
             {
                 for (int cz = -searchRadius; cz <= searchRadius; cz++)
                 {
-                    // Calculate the world grid position of this specific neighbor
                     Vector3Int neighborWormChunkPos = chunkPos + new Vector3Int(cx, cy, cz);
 
-                    // Start the worm in the center of that neighbor chunk
-                    Vector3 wormStart = new Vector3(
-                        neighborWormChunkPos.x * chunkSize + chunkSize / 2f,
-                        neighborWormChunkPos.y * chunkSize + chunkSize / 2f,
-                        neighborWormChunkPos.z * chunkSize + chunkSize / 2f
+                    // We use the neighbor's chunk coordinates multiplied by an arbitrary 
+                    // number to sample a random spot on the noise map.
+                    float spawnChanceNoise = Perlin3D(
+                        neighborWormChunkPos.x * 13.7f,
+                        neighborWormChunkPos.y * 13.7f,
+                        neighborWormChunkPos.z * 13.7f
                     );
 
-                    // CarveWorm will trace the path, but CarveAt naturally ignores 
-                    // any blocks that fall outside of OUR local chunkData array!
-                    CarveWorm(
-                        chunkData, chunkSize, chunkPos, wormStart,
-                        wormSteps, wormRadius, wormStepSize,
-                        wormDirectionScale, wormVerticalBias,
-                        wormNoiseOffsetNy, wormNoiseOffsetNz
-                    );
+                    // Only spawn a worm if the noise is above a threshold.
+                    // 0.7f means only about 30% of chunks will actually spawn a worm!
+                    // Change this number to 0.9f for extremely rare caves, or 0.1f for lots of caves.
+                    if (spawnChanceNoise > 1 - wormSpawnChance)
+                    {
+                        Vector3 wormStart = new Vector3(
+                            neighborWormChunkPos.x * chunkSize + chunkSize / 2f,
+                            neighborWormChunkPos.y * chunkSize + chunkSize / 2f,
+                            neighborWormChunkPos.z * chunkSize + chunkSize / 2f
+                        );
+
+                        CarveWorm(
+                            chunkData, chunkSize, chunkPos, wormStart,
+                            wormSteps, wormRadius, wormStepSize,
+                            wormDirectionScale, wormVerticalBias,
+                            wormNoiseOffsetNy, wormNoiseOffsetNz
+                        );
+                    }
                 }
             }
         }

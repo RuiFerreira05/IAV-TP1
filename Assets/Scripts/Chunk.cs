@@ -14,7 +14,7 @@ public class Chunk : MonoBehaviour
     [HideInInspector] public bool drawn = false;
 
     [Header("Terrain Heights")]
-    public float seaLevel = 4f;
+    public float seaLevel = 0f;
     public float maxHeight = 80f;
     public float dirtThickness = 3f;
 
@@ -32,7 +32,7 @@ public class Chunk : MonoBehaviour
     public int continentalnessOctaves = 2;
     public float continentalnessScale = 0.005f;
     public int baseHeightOctaves = 4;
-    public float baseHeightScale = 0.02f;
+    public float baseHeightScale = 0.012f;
     public int detailOctaves = 6;
     public float detailScale = 0.1f;
     public float detailAmplitude = 1.5f;
@@ -44,14 +44,14 @@ public class Chunk : MonoBehaviour
     public int carvingThreshold = 5;
 
     [Header("Cave Worm Settings")]
-    public int wormSteps = 50;
-    public float wormRadius = 1f;
-    public float wormStepSize = 2f;
+    public int wormSteps = 75;
+    public float wormRadius = 3f;
+    public float wormStepSize = 1f;
     public float wormDirectionScale = 0.1f;
     public float wormVerticalBias = 0.5f;
     public float wormNoiseOffsetNy = 100f;
     public float wormNoiseOffsetNz = 200f;
-    [Range(0, 1)] public float wormSpawnChance = 0.3f;
+    [Range(0, 1)] public float wormSpawnChance = 0.5f;
 
     bool HasSolidNeighbour(int x, int y, int z)
     {

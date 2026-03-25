@@ -104,21 +104,36 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Chunk
   chunkSize: 16
-  densityThreshold: -0.3
-  scale: 0.05
-  octaves: 4
-  noiseOffsetX: 0
-  noiseOffsetY: 0
-  noiseOffsetZ: 0
-  offsetScale: 1
-  stoneHeight: 2
-  grassHeight: 7
   chunkMaterial: {fileID: 0}
   worldManager: {fileID: 0}
   drawn: 0
+  seaLevel: 4
+  maxHeight: 80
+  stoneHeight: 2
+  grassHeight: 7
+  densityThreshold: -0.3
+  scale: 0.05
+  octaves: 4
+  offsetScale: 1
+  noiseOffsetX: 0
+  noiseOffsetY: 0
+  noiseOffsetZ: 0
+  heightNoiseExponent: 1.5
+  continentalnessOctaves: 2
+  continentalnessScale: 0.005
+  baseHeightOctaves: 4
+  baseHeightScale: 0.008
+  detailOctaves: 6
+  detailScale: 0.1
+  detailAmplitude: 1.5
   caveScale: 0.1
   caveThreshold: 0.65
-  heightNoiseExponent: 1.5
-  seaLevel: 4
-  maxHeight: 40
-  detailAmplitude: 1.5
+  minCarvingHeight: 1
+  carvingThreshold: 5
+  wormSteps: 25
+  wormRadius: 2
+  wormStepSize: 2
+  wormDirectionScale: 0.1
+  wormVerticalBias: 0.5
+  wormNoiseOffsetNy: 100
+  wormNoiseOffsetNz: 200

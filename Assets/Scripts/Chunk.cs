@@ -5,38 +5,52 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class Chunk : MonoBehaviour
 {
+    [Header("Core Settings")]
     public int chunkSize = 16;
+    public Material chunkMaterial;
+
+    [HideInInspector] public Block[,,] chunkData;
+    [HideInInspector] public WorldManager3D worldManager;
+    [HideInInspector] public bool drawn = false;
+
+    [Header("Terrain Heights")]
+    public float seaLevel = 4f;
+    public float maxHeight = 80f;
+    public float dirtThickness = 3f;
+
+    [Header("Base 3D Noise (Density)")]
     public float densityThreshold = -0.3f;
     public float scale = 0.05f;
     public int octaves = 4;
-    public int noiseOffsetX = 0;
-    public int noiseOffsetY = 0;
-    public int noiseOffsetZ = 0;
     public float offsetScale = 1;
-    public int stoneHeight = 2;
-    public int grassHeight = 7;
-    public Block[,,] chunkData;
-    public Material chunkMaterial;
-    public WorldManager3D worldManager;
-    public bool drawn = false;
+    [HideInInspector] public float noiseOffsetX = 14721647f;
+    [HideInInspector] public float noiseOffsetY = 46895169f;
+    [HideInInspector] public float noiseOffsetZ = 55897124f;
+
+    [Header("2D Height Map Noise")]
+    public float heightNoiseExponent = 1.5f;
+    public int continentalnessOctaves = 2;
+    public float continentalnessScale = 0.005f;
+    public int baseHeightOctaves = 4;
+    public float baseHeightScale = 0.02f;
+    public int detailOctaves = 6;
+    public float detailScale = 0.1f;
+    public float detailAmplitude = 1.5f;
+
+    [Header("Cave System Noise")]
     public float caveScale = 0.1f;
     public float caveThreshold = 0.65f;
-    public float heightNoiseExponent = 1.5f;
-    public float seaLevel = 4f;
-    public float maxHeight = 40f;
-    public float detailAmplitude = 1.5f;
+    public int minCarvingHeight = 1;
     public int carvingThreshold = 5;
 
-    //void Start()
-    //{
-    //    Generate(worldManager);
-    //}
-
-    public void Generate(WorldManager3D worldManager)
-    {
-        this.worldManager = worldManager;
-        InitializeChunk();
-    }
+    [Header("Cave Worm Settings")]
+    public int wormSteps = 25;
+    public float wormRadius = 2f;
+    public float wormStepSize = 2f;
+    public float wormDirectionScale = 0.1f;
+    public float wormVerticalBias = 0.5f;
+    public float wormNoiseOffsetNy = 100f;
+    public float wormNoiseOffsetNz = 200f;
 
     bool HasSolidNeighbour(int x, int y, int z)
     {
@@ -45,7 +59,9 @@ public class Chunk : MonoBehaviour
             z >= 0 && z < chunkSize)
             return chunkData[x, y, z].isSolid;
 
-        // Out of bounds � look up the neighboring chunk
+        if (worldManager == null) return false;
+
+        // Out of bounds - look up the neighboring chunk
         Vector3Int thisCoord = new Vector3Int(
             (int)transform.position.x / chunkSize,
             (int)transform.position.y / chunkSize,
@@ -73,6 +89,8 @@ public class Chunk : MonoBehaviour
             z >= 0 && z < chunkSize)
             return chunkData[x, y, z].type;
 
+        if (worldManager == null) return Block.BlockType.NONE;
+
         Vector3Int thisCoord = new Vector3Int(
             (int)transform.position.x / chunkSize,
             (int)transform.position.y / chunkSize,
@@ -93,7 +111,7 @@ public class Chunk : MonoBehaviour
         return neighbor.chunkData[localX, localY, localZ].type;
     }
 
-    public void InitializeChunk()
+    public void GenerateVoxelData()
     {
         chunkData = new Block[chunkSize, chunkSize, chunkSize];
 
@@ -104,35 +122,28 @@ public class Chunk : MonoBehaviour
                 for (int y = 0; y < chunkSize; y++)
                 {
                     Block.BlockType type;
-
                     float worldX = transform.position.x + x;
                     float worldY = transform.position.y + y;
                     float worldZ = transform.position.z + z;
 
-                    // Three separate noise layers
-                    float continentalness = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, 2, 0.005f);
-                    float baseHeight = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, 4, 0.02f);
-                    float detail = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, 6, 0.1f);
+                    float continentalness = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, continentalnessOctaves, continentalnessScale);
+                    float baseHeight = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, baseHeightOctaves, baseHeightScale);
+                    float detail = FBm(worldX + noiseOffsetX, worldZ + noiseOffsetZ, detailOctaves, detailScale);
 
-                    float finalHeight = Mathf.Lerp(seaLevel, maxHeight, continentalness * baseHeight)
-                                      + detail * detailAmplitude;
+                    float finalHeight = Mathf.Lerp(seaLevel, maxHeight, continentalness * baseHeight) + detail * detailAmplitude;
 
-                    float densityNoise = Perlin3D(
-                        (worldX + noiseOffsetX) * offsetScale,
-                        (worldY + noiseOffsetY) * offsetScale,
-                        (worldZ + noiseOffsetZ) * offsetScale);
+                    float densityNoise = Perlin3D((worldX + noiseOffsetX) * offsetScale, (worldY + noiseOffsetY) * offsetScale, (worldZ + noiseOffsetZ) * offsetScale);
 
                     float finalDensity = finalHeight - worldY + densityNoise;
                     bool solid = finalDensity > densityThreshold;
 
                     bool cave_air = false;
-                    if (solid && y > 1 && y < carvingThreshold)
+                    if (solid && y > minCarvingHeight && y < carvingThreshold)
                     {
                         float cx = (worldX + noiseOffsetX) * caveScale;
                         float cy = worldY * caveScale;
                         float cz = (worldZ + noiseOffsetZ) * caveScale;
-                        float caveNoise = Perlin3D(cx, cy, cz);
-                        if (caveNoise > caveThreshold)
+                        if (Perlin3D(cx, cy, cz) > caveThreshold)
                         {
                             solid = false;
                             cave_air = true;
@@ -141,7 +152,7 @@ public class Chunk : MonoBehaviour
 
                     if (solid)
                     {
-                        if (worldY < stoneHeight)
+                        if (finalDensity > densityThreshold + dirtThickness)
                         {
                             type = Block.BlockType.STONE;
                         }
@@ -149,85 +160,47 @@ public class Chunk : MonoBehaviour
                         {
                             type = Block.BlockType.DIRT;
                         }
-                    }
-                    else
-                    {
-                        if (cave_air)
-                        {
-                            type = Block.BlockType.CAVE_AIR;
-                        }
-                        else
-                        {
-                            type = Block.BlockType.AIR;
-                        }
-                    }
+                    } 
+                    else type = cave_air ? Block.BlockType.CAVE_AIR : Block.BlockType.AIR;
 
                     chunkData[x, y, z] = new Block(type, new Vector3(x, y, z));
                 }
             }
         }
 
-        Vector3Int chunkPos = new Vector3Int(
-            (int)transform.position.x / chunkSize,
-            (int)transform.position.y / chunkSize,  // was missing Y entirely
-            (int)transform.position.z / chunkSize
-        );
+        Vector3Int chunkPos = new Vector3Int((int)transform.position.x / chunkSize, (int)transform.position.y / chunkSize, (int)transform.position.z / chunkSize);
+        Vector3 wormStart = new Vector3(transform.position.x + chunkSize / 2f, transform.position.y + chunkSize / 2f, transform.position.z + chunkSize / 2f);
 
-        Vector3 wormStart = new Vector3(
-            transform.position.x + chunkSize / 2f,
-            transform.position.y + chunkSize / 2f,
-            transform.position.z + chunkSize / 2f
-        );
+        CarveWorm(chunkData, chunkSize, chunkPos, wormStart, wormSteps, wormRadius, wormStepSize, wormDirectionScale, wormVerticalBias, wormNoiseOffsetNy, wormNoiseOffsetNz);
+    }
 
-        CarveWorm(
-            chunkData,
-            chunkSize,
-            chunkPos,
-            wormStart,
-            steps: 25,
-            radius: 2f,
-            stepSize: 2f,
-            directionScale: 0.1f
-        );
-
+    public void DecorateChunk()
+    {
         for (int x = 0; x < chunkSize; x++)
         {
             for (int z = 0; z < chunkSize; z++)
             {
                 for (int y = 0; y < chunkSize; y++)
                 {
+                    if (!chunkData[x, y, z].isSolid) continue;
+
                     float worldY = transform.position.y + y;
+                    Block.BlockType aboveType = NeighbourType(x, y + 1, z);
 
-                    if (chunkData[x, y, z].isSolid && !HasSolidNeighbour(x, y + 1, z) && worldY > grassHeight)
+                    // If a DIRT block is exposed to the sky, it grows GRASS.
+                    if (aboveType == Block.BlockType.AIR && chunkData[x, y, z].type == Block.BlockType.DIRT)
                     {
-                        chunkData[x, y, z].type = Block.BlockType.GRASS;
-                    }
-
-                    if (chunkData[x, y, z].isSolid && !HasSolidNeighbour(x, y + 1, z))
-                    {
-                        if (NeighbourType(x, y+1, z) == Block.BlockType.AIR)
+                        if (worldY >= seaLevel)
                         {
-
                             chunkData[x, y, z].type = Block.BlockType.GRASS;
                         }
-                        else if(NeighbourType(x, y + 1, z) == Block.BlockType.CAVE_AIR)
-                        {
-                            chunkData[x, y, z].type = Block.BlockType.STONE;
-                        }
                     }
-                    else if(chunkData[x, y, z].isSolid && NeighbourType(x - 1, y, z) == Block.BlockType.CAVE_AIR)
-                    {
-                        chunkData[x, y, z].type = Block.BlockType.STONE;
-                    }
-                    else if (chunkData[x, y, z].isSolid && NeighbourType(x + 1, y, z) == Block.BlockType.CAVE_AIR)
-                    {
-                        chunkData[x, y, z].type = Block.BlockType.STONE;
-                    }
-                    else if (chunkData[x, y, z].isSolid && NeighbourType(x, y, z - 1) == Block.BlockType.CAVE_AIR)
-                    {
-                        chunkData[x, y, z].type = Block.BlockType.STONE;
-                    }
-                    else if (chunkData[x, y, z].isSolid && NeighbourType(x, y, z + 1) == Block.BlockType.CAVE_AIR)
+                    // Prevent cave walls/roofs from generating as dirt
+                    else if (aboveType == Block.BlockType.CAVE_AIR ||
+                             NeighbourType(x - 1, y, z) == Block.BlockType.CAVE_AIR ||
+                             NeighbourType(x + 1, y, z) == Block.BlockType.CAVE_AIR ||
+                             NeighbourType(x, y, z - 1) == Block.BlockType.CAVE_AIR ||
+                             NeighbourType(x, y, z + 1) == Block.BlockType.CAVE_AIR)
                     {
                         chunkData[x, y, z].type = Block.BlockType.STONE;
                     }
@@ -238,28 +211,29 @@ public class Chunk : MonoBehaviour
 
     public static void CarveWorm(
         Block[,,] chunkData, int chunkSize,
-        Vector3Int worldOffset,           // Vector3Int instead of Vector2Int
+        Vector3Int worldOffset,
         Vector3 start, int steps, float radius,
-        float stepSize, float directionScale)
+        float stepSize, float directionScale,
+        float verticalBias, float offsetNy, float offsetNz)
     {
         Vector3 pos = start;
         for (int i = 0; i < steps; i++)
         {
             float nx = Perlin3D(pos.x * directionScale, pos.y * directionScale, pos.z * directionScale) * 2f - 1f;
-            float ny = Perlin3D(pos.y * directionScale + 100f, pos.z * directionScale + 100f, pos.x * directionScale + 100f) * 2f - 1f;
-            float nz = Perlin3D(pos.z * directionScale + 200f, pos.x * directionScale + 200f, pos.y * directionScale + 200f) * 2f - 1f;
-            Vector3 dir = new Vector3(nx, ny * 0.5f, nz).normalized;
+            float ny = Perlin3D(pos.y * directionScale + offsetNy, pos.z * directionScale + offsetNy, pos.x * directionScale + offsetNy) * 2f - 1f;
+            float nz = Perlin3D(pos.z * directionScale + offsetNz, pos.x * directionScale + offsetNz, pos.y * directionScale + offsetNz) * 2f - 1f;
+            Vector3 dir = new Vector3(nx, ny * verticalBias, nz).normalized;
             pos += dir * stepSize;
             CarveAt(chunkData, chunkSize, worldOffset, pos, radius);
         }
     }
 
-    static void CarveAt(  
+    static void CarveAt(
         Block[,,] chunkData, int chunkSize,
         Vector3Int worldOffset, Vector3 center, float radius)
     {
         int localX = Mathf.RoundToInt(center.x) - worldOffset.x * chunkSize;
-        int localY = Mathf.RoundToInt(center.y) - worldOffset.y * chunkSize; // now correct
+        int localY = Mathf.RoundToInt(center.y) - worldOffset.y * chunkSize;
         int localZ = Mathf.RoundToInt(center.z) - worldOffset.z * chunkSize;
         int r = Mathf.CeilToInt(radius);
         for (int dx = -r; dx <= r; dx++)
@@ -281,12 +255,10 @@ public class Chunk : MonoBehaviour
 
     public void DrawChunk()
     {
-        // 1. Criar listas partilhadas (vertices, triangles, uvs)
         List<Vector3> vertices = new List<Vector3>();
         List<int> triangles = new List<int>();
         List<Vector2> uvs = new List<Vector2>();
 
-        // 2. Para cada bloco: adicionar TODAS as 6 faces
         for (int x = 0; x < chunkSize; x++)
             for (int y = 0; y < chunkSize; y++)
                 for (int z = 0; z < chunkSize; z++)
@@ -308,20 +280,25 @@ public class Chunk : MonoBehaviour
                         block.AddFaceToMeshData(Block.CubeFace.Right, vertices, triangles, uvs);
                 }
 
-        // 3. Criar Mesh, atribuir arrays
         Mesh mesh = new Mesh();
 
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
         mesh.uv = uvs.ToArray();
 
-        // 4. RecalculateNormals + RecalculateBounds
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
 
-        // 5. Atribuir ao MeshFilter e MeshRenderer
         MeshFilter meshFilter = GetComponent<MeshFilter>();
-        meshFilter.mesh = mesh;
+
+        if (Application.isPlaying)
+        {
+            meshFilter.mesh = mesh;
+        }
+        else
+        {
+            meshFilter.sharedMesh = mesh;
+        }
 
         MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
         meshRenderer.material = chunkMaterial;
@@ -352,9 +329,9 @@ public class Chunk : MonoBehaviour
             value += Mathf.PerlinNoise(x * scale * frequency,
             z * scale * frequency) * amplitude;
             totalAmplitude += amplitude;
-            amplitude *= persistence; // decresce a cada oitava
-            frequency *= lacunarity; // cresce a cada oitava
+            amplitude *= persistence;
+            frequency *= lacunarity;
         }
-        return value / totalAmplitude; // normalizar para [0, 1]
+        return value / totalAmplitude;
     }
 }

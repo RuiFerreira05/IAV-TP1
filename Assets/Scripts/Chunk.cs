@@ -344,9 +344,6 @@ public class Chunk : MonoBehaviour
         MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
         meshRenderer.material = chunkMaterial;
 
-        MeshCollider meshCollider = GetComponent<MeshCollider>();
-        meshCollider.sharedMesh = meshFilter.mesh;
-
         drawn = true;
     }
 

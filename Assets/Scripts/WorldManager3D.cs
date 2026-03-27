@@ -1,7 +1,10 @@
 // WorldManager.cs
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class WorldManager3D : MonoBehaviour
 {
@@ -22,7 +25,6 @@ public class WorldManager3D : MonoBehaviour
     public Dictionary<Vector3Int, GameObject> activeChunks = new();
 	private Vector2Int lastPlayerChunk = new Vector2Int(int.MinValue, int.MinValue);
 
-	private Coroutine buildRoutine;
 
 	private float noiseOffsetX_random;
 	private float noiseOffsetY_random;
@@ -30,7 +32,15 @@ public class WorldManager3D : MonoBehaviour
 
 	public int gridSize = 5;
 
-	void Start()
+	private Coroutine buildRoutine;
+    private Coroutine decorateRoutine;
+    private Coroutine drawRoutine;
+
+    private List<Vector3Int> neededChunks = new List<Vector3Int>();
+    private List<Chunk> spawnedChunks = new List<Chunk>();
+    private List<Chunk> decoratedChunks = new List<Chunk>();
+
+    void Start()
 	{
         foreach (Transform child in transform)
         {
@@ -42,18 +52,23 @@ public class WorldManager3D : MonoBehaviour
         noiseOffsetY_random = Random.Range(-10000f, 10000f);
         noiseOffsetZ_random = Random.Range(-10000f, 10000f);
 
-        // PASS 1: Generate Data for all chunks
+        genStartingGrid();
+    }
+
+    void genStartingGrid()
+    {
         for (int cx = -gridSize / 2; cx < gridSize / 2; cx++)
             for (int cz = -gridSize / 2; cz < gridSize / 2; cz++)
-                for (int cy = chunksDown; cy <= chunksUp; cy++)
+                for (int cy = -chunksDown; cy <= chunksUp; cy++)
                     SpawnChunk(new Vector3Int(cx, cy, cz));
 
-        // PASS 2: Decorate all chunks
         foreach (var chunkObj in activeChunks.Values)
-            chunkObj.GetComponent<Chunk>().DecorateChunk();
+            if (!chunkObj.GetComponent<Chunk>().isEmpty)
+                chunkObj.GetComponent<Chunk>().DecorateChunk();
 
-        // PASS 3: Draw all chunks
-        DrawActiveChunks();
+        foreach (var chunkObj in activeChunks.Values)
+            if (!chunkObj.GetComponent<Chunk>().isEmpty)
+                chunkObj.GetComponent<Chunk>().DrawChunk();
     }
 
 	void Update()
@@ -62,15 +77,118 @@ public class WorldManager3D : MonoBehaviour
 		if (current != lastPlayerChunk)
 		{
 			lastPlayerChunk = current;
-			if (buildRoutine != null)
-				StopCoroutine(buildRoutine);
-			if (removeFarChunks) RemoveDistantChunks(current);
-			buildRoutine = StartCoroutine(BuildChunks(GetNeededChunks(current)));
-		}
+			//if (buildRoutine != null)
+			//	StopCoroutine(buildRoutine);
+			//if (removeFarChunks) RemoveDistantChunks(current);
+			//buildRoutine = StartCoroutine(BuildChunks(GetNeededChunks(current)));
+			neededChunks.AddRange(GetNeededChunks(current));
+            if (removeFarChunks) RemoveDistantChunks(current);
+        }
+
+		if (neededChunks.Count > 0 && buildRoutine == null)
+		{
+			buildRoutine = StartCoroutine(BuildChunks());
+        }
+		if (spawnedChunks.Count > 0 && decorateRoutine == null)
+		{
+			decorateRoutine = StartCoroutine(DecorateChunks());
+        }
+		if (decoratedChunks.Count > 0 && drawRoutine == null)
+		{
+			drawRoutine = StartCoroutine(DrawChunks());
+        }
+
 	}
 
-	// Updated to Vector3Int
-	public Chunk GetChunk(Vector3Int coord)
+    IEnumerator BuildChunks()
+    {
+        Vector3Int[] internalNeededChunks;
+
+        lock (neededChunks)
+        {
+            var chunkNum = Mathf.Min(chunksPerFrame, neededChunks.Count);
+            internalNeededChunks = neededChunks.Take(chunkNum).ToArray();
+
+            neededChunks.RemoveRange(0, chunkNum);
+        }
+        foreach (var coord in internalNeededChunks)
+        {
+            var newChunk = SpawnChunk(coord);
+
+            if (!newChunk.isEmpty)
+            {
+                lock (spawnedChunks)
+                {
+                    spawnedChunks.Add(newChunk);
+                }
+            }
+        }
+
+        buildRoutine = null;
+        yield break;
+    }
+
+    IEnumerator DecorateChunks()
+    {
+        Chunk[] internalspawnedChunks;
+
+        lock (spawnedChunks)
+        {
+            var chunkNum = Mathf.Min(chunksPerFrame, spawnedChunks.Count);
+            internalspawnedChunks = spawnedChunks.Take(chunkNum).ToArray();
+
+            spawnedChunks.RemoveRange(0, chunkNum);
+        }
+        foreach (var chunk in internalspawnedChunks)
+        {
+            chunk.DecorateChunk();
+
+            lock (decoratedChunks)
+            {
+                decoratedChunks.Add(chunk);
+            }
+        }
+
+        decorateRoutine = null;
+        yield break;
+    }
+
+    IEnumerator DrawChunks()
+    {
+        Chunk[] internaldecoratedChunks;
+
+        lock (decoratedChunks)
+        {
+            var chunkNum = Mathf.Min(chunksPerFrame, decoratedChunks.Count);
+            internaldecoratedChunks = decoratedChunks.Take(chunkNum).ToArray();
+
+            decoratedChunks.RemoveRange(0, chunkNum);
+        }
+        foreach (var chunk in internaldecoratedChunks)
+        {
+            chunk.DrawChunk();
+        }
+
+        drawRoutine = null;
+        yield break;
+    }
+
+    HashSet<Vector3Int> GetNeededChunks(Vector2Int center)
+    {
+        HashSet<Vector3Int> needed = new();
+        for (int dx = -renderDistance; dx <= renderDistance; dx++)
+            for (int dz = -renderDistance; dz <= renderDistance; dz++)
+                for (int dy = -chunksDown; dy <= chunksUp; dy++)
+                {
+                    Vector3Int coord = new Vector3Int(center.x + dx, dy, center.y + dz);
+                    if (activeChunks.ContainsKey(coord)) continue;
+                    needed.Add(coord);
+                }
+        return needed;
+    }
+
+    // Updated to Vector3Int
+    public Chunk GetChunk(Vector3Int coord)
 	{
 		if (activeChunks.TryGetValue(coord, out GameObject go))
 			return go.GetComponent<Chunk>();
@@ -85,32 +203,28 @@ public class WorldManager3D : MonoBehaviour
 			Mathf.FloorToInt(pos.z / chunkSize));
 	}
 
-	void RemoveDistantChunks(Vector2Int current)
-	{
-		List<Vector3Int> toRemove = new();
-		HashSet<Vector3Int> needed = GetNeededChunks(current);
-		foreach (var chunk in activeChunks)
-		{
-			if (!needed.Contains(chunk.Key))
-				toRemove.Add(chunk.Key);
-		}
-		foreach (var coord in toRemove)
-		{
-			Destroy(activeChunks[coord]);
-			activeChunks.Remove(coord);
-		}
-	}
+    void RemoveDistantChunks(Vector2Int current)
+    {
+        List<Vector3Int> toRemove = new();
 
-	// Now returns Vector3Int coords including all Y levels
-	HashSet<Vector3Int> GetNeededChunks(Vector2Int center)
-	{
-		HashSet<Vector3Int> needed = new();
-		for (int dx = -renderDistance; dx <= renderDistance; dx++)
-			for (int dz = -renderDistance; dz <= renderDistance; dz++)
-				for (int dy = chunksDown; dy <= chunksUp; dy++)
-					needed.Add(new Vector3Int(center.x + dx, dy, center.y + dz));
-		return needed;
-	}
+        foreach (var chunk in activeChunks)
+        {
+            // Check if the chunk is outside the render distance bounds
+            bool isOutsideX = Mathf.Abs(chunk.Key.x - current.x) > renderDistance;
+            bool isOutsideZ = Mathf.Abs(chunk.Key.z - current.y) > renderDistance; // Note: current.y is actually the Z coordinate from GetPlayerChunk
+
+            if (isOutsideX || isOutsideZ)
+            {
+                toRemove.Add(chunk.Key);
+            }
+        }
+
+        foreach (var coord in toRemove)
+        {
+            Destroy(activeChunks[coord]);
+            activeChunks.Remove(coord);
+        }
+    }
 
     Chunk SpawnChunk(Vector3Int coord)
     {
@@ -129,53 +243,22 @@ public class WorldManager3D : MonoBehaviour
 
         activeChunks[coord] = chunkObj;
 
+        // Early exit so we don't add neighboors
+        if (chunk.isEmpty)
+        {
+            return chunk;
+        }
+
         Vector3Int[] directions = { Vector3Int.right, Vector3Int.left, Vector3Int.up, Vector3Int.down, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1) };
         foreach (var dir in directions)
         {
             if (activeChunks.TryGetValue(coord + dir, out GameObject neighborObj))
             {
-                neighborObj.GetComponent<Chunk>().drawn = false;
+                var neighboorChunk = neighborObj.GetComponent<Chunk>();
+                neighboorChunk.drawn = false;
+                decoratedChunks.Add(neighboorChunk);
             }
         }
         return chunk;
-    }
-
-    void DrawActiveChunks()
-	{
-		foreach (var chunk in activeChunks.Values)
-		{
-			Chunk c = chunk.GetComponent<Chunk>();
-			if (!c.drawn) c.DrawChunk();
-		}
-	}
-
-    IEnumerator BuildChunks(HashSet<Vector3Int> needed)
-    {
-        int count = 0;
-        List<Chunk> newlySpawnedChunks = new List<Chunk>();
-
-        // PASS 1: Data Generation
-        foreach (var coord in needed)
-        {
-            if (!activeChunks.ContainsKey(coord))
-            {
-                newlySpawnedChunks.Add(SpawnChunk(coord));
-                count++;
-                if (count % chunksPerFrame == 0) yield return null;
-            }
-        }
-
-        // PASS 2: Decoration (Grass)
-        foreach (Chunk c in newlySpawnedChunks)
-        {
-            c.DecorateChunk();
-        }
-
-        // PASS 3: Mesh Drawing
-        foreach (var chunkObj in activeChunks.Values)
-        {
-            Chunk c = chunkObj.GetComponent<Chunk>();
-            if (!c.drawn) c.DrawChunk();
-        }
     }
 }

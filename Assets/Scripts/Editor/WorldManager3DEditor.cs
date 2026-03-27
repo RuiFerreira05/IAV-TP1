@@ -63,9 +63,9 @@ public class WorldManager3DEditor : Editor
 
                     Chunk chunk = chunkObj.GetComponent<Chunk>();
                     chunk.chunkMaterial = manager.chunkMaterial;
-                    chunk.noiseOffsetX = 0; // Fix offset to 0 for consistent previews
-                    chunk.noiseOffsetY = 0;
-                    chunk.noiseOffsetZ = 0;
+                    chunk.noiseOffsetX = 5523636; // Fix offset to 0 for consistent previews
+                    chunk.noiseOffsetY = 6236632;
+                    chunk.noiseOffsetZ = 3664646;
                     chunk.worldManager = manager;
 
                     manager.activeChunks[coord] = chunkObj;
@@ -79,10 +79,11 @@ public class WorldManager3DEditor : Editor
 
         // 2. Decorate ALL chunks
         foreach (var chunkObj in manager.activeChunks.Values)
-            chunkObj.GetComponent<Chunk>().DecorateChunk();
+            if (!chunkObj.GetComponent<Chunk>().isEmpty)
+                chunkObj.GetComponent<Chunk>().DecorateChunk();
 
-        // 3. Build Meshes for ALL chunks
         foreach (var chunkObj in manager.activeChunks.Values)
-            chunkObj.GetComponent<Chunk>().DrawChunk();
+            if (!chunkObj.GetComponent<Chunk>().isEmpty)
+                chunkObj.GetComponent<Chunk>().DrawChunk();
     }
 }

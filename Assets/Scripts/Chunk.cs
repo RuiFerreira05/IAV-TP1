@@ -12,6 +12,7 @@ public class Chunk : MonoBehaviour
     [HideInInspector] public Block[,,] chunkData;
     [HideInInspector] public WorldManager3D worldManager;
     [HideInInspector] public bool drawn = false;
+    [HideInInspector] public bool isEmpty = true;
 
     [Header("Terrain Heights")]
     public float seaLevel = 0f;
@@ -52,6 +53,7 @@ public class Chunk : MonoBehaviour
     public float wormNoiseOffsetNy = 100f;
     public float wormNoiseOffsetNz = 200f;
     [Range(0, 1)] public float wormSpawnChance = 0.5f;
+    public float wormOffsetScale = 14.7f;
 
     bool HasSolidNeighbour(int x, int y, int z)
     {
@@ -115,6 +117,7 @@ public class Chunk : MonoBehaviour
     public void GenerateVoxelData()
     {
         chunkData = new Block[chunkSize, chunkSize, chunkSize];
+        this.isEmpty = true;
 
         for (int x = 0; x < chunkSize; x++)
         {
@@ -143,7 +146,7 @@ public class Chunk : MonoBehaviour
                     if (solid && y > minCarvingHeight && y < carvingThreshold)
                     {
                         float cx = (worldX + noiseOffsetX) * caveScale;
-                        float cy = worldY * caveScale;
+                        float cy = (worldY + noiseOffsetY) * caveScale;
                         float cz = (worldZ + noiseOffsetZ) * caveScale;
                         if (Perlin3D(cx, cy, cz) > caveThreshold)
                         {
@@ -154,6 +157,10 @@ public class Chunk : MonoBehaviour
 
                     if (solid)
                     {
+                        if (this.isEmpty)
+                        {
+                            this.isEmpty = false;
+                        }
                         if (finalDensity > densityThreshold + dirtThickness)
                         {
                             type = Block.BlockType.STONE;
@@ -168,6 +175,11 @@ public class Chunk : MonoBehaviour
                     chunkData[x, y, z] = new Block(type, new Vector3(x, y, z));
                 }
             }
+        }
+
+        if (this.isEmpty)
+        {
+            return;
         }
 
         Vector3Int chunkPos = new Vector3Int((int)transform.position.x / chunkSize, (int)transform.position.y / chunkSize, (int)transform.position.z / chunkSize);
@@ -187,14 +199,11 @@ public class Chunk : MonoBehaviour
                     // We use the neighbor's chunk coordinates multiplied by an arbitrary 
                     // number to sample a random spot on the noise map.
                     float spawnChanceNoise = Perlin3D(
-                        neighborWormChunkPos.x * 13.7f,
-                        neighborWormChunkPos.y * 13.7f,
-                        neighborWormChunkPos.z * 13.7f
+                        (neighborWormChunkPos.x + noiseOffsetX) * wormOffsetScale,
+                        (neighborWormChunkPos.y + noiseOffsetY) * wormOffsetScale,
+                        (neighborWormChunkPos.z + noiseOffsetZ) * wormOffsetScale
                     );
 
-                    // Only spawn a worm if the noise is above a threshold.
-                    // 0.7f means only about 30% of chunks will actually spawn a worm!
-                    // Change this number to 0.9f for extremely rare caves, or 0.1f for lots of caves.
                     if (spawnChanceNoise > 1 - wormSpawnChance)
                     {
                         Vector3 wormStart = new Vector3(

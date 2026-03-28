@@ -17,7 +17,7 @@ public class Block
     static readonly Vector3 v6 = new Vector3(0.5f, 0.5f, -0.5f);
     static readonly Vector3 v7 = new Vector3(-0.5f, 0.5f, -0.5f);
 
-    public enum BlockType { GRASS, DIRT, STONE, AIR, BEDROCK, CAVE_AIR, NONE, SNOW, WATER}
+    public enum BlockType { GRASS, DIRT, STONE, AIR, BEDROCK, CAVE_AIR, NONE, SNOW}
     public BlockType type;
     public Block(BlockType type, Vector3 position)
     {
@@ -51,9 +51,6 @@ public class Block
                 if (face == CubeFace.Top) lbc = new Vector2(2f, 11f) / 16;
                 else if (face == CubeFace.Bottom) lbc = new Vector2(2f, 15f) / 16;
                 else lbc = new Vector2(4f, 11f) / 16;
-                break;
-            case BlockType.WATER:
-                lbc = new Vector2(15f, 2f);
                 break;
             default:
                 lbc = new Vector2(0f, 1f);

@@ -18,6 +18,7 @@ public class Chunk : MonoBehaviour
     public float seaLevel = 0f;
     public float maxHeight = 80f;
     public float dirtThickness = 3f;
+    public float snowHeightProportion = 2/3f;
 
     [Header("Base 3D Noise (Density)")]
     public float densityThreshold = -0.3f;
@@ -242,7 +243,11 @@ public class Chunk : MonoBehaviour
                     {
                         if (worldY >= seaLevel)
                         {
-                            chunkData[x, y, z].type = Block.BlockType.GRASS;
+                            if (worldY > maxHeight - maxHeight * snowHeightProportion)
+                            {
+                                chunkData[x, y, z].type = Block.BlockType.SNOW;
+                            }
+                            else chunkData[x, y, z].type = Block.BlockType.GRASS;
                         }
                     }
                     // Prevent cave walls/roofs from generating as dirt

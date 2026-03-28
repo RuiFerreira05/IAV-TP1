@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 6191415190109049100}
   - component: {fileID: 5933907250355542626}
   - component: {fileID: 5498834084966301891}
+  - component: {fileID: 2177227266661100982}
   m_Layer: 0
   m_Name: Chunk
   m_TagString: Untagged
@@ -106,11 +107,12 @@ MonoBehaviour:
   chunkSize: 16
   chunkMaterial: {fileID: 0}
   worldManager: {fileID: 0}
-  drawn: 0
-  isEmpty: 1
+  drawn: 1
+  isEmpty: 0
   seaLevel: 0
   maxHeight: 80
   dirtThickness: 3
+  snowHeightProportion: 0.6666667
   densityThreshold: -0.3
   scale: 0.05
   octaves: 4
@@ -138,3 +140,26 @@ MonoBehaviour:
   wormNoiseOffsetNy: 100
   wormNoiseOffsetNz: 200
   wormSpawnChance: 0.5
+  wormOffsetScale: 14.7
+--- !u!64 &2177227266661100982
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1396014723752107616}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}

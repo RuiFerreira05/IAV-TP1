@@ -37,7 +37,7 @@ public class Player : MonoBehaviour
                           + transform.forward * move.y
                           + Vector3.up * vertical;  // add vertical
 
-        transform.Translate(direction * moveSpeed * Time.deltaTime, Space.World);
+        transform.Translate(direction * (moveSpeed * Time.deltaTime), Space.World);
 
         transform.Rotate(0, look.x * lookSensitivity, 0);
         cameraFollow.AddPitch(look.y, lookSensitivity);

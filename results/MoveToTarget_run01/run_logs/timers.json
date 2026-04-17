@@ -1,0 +1,42 @@
+{
+    "name": "root",
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1776430681",
+        "python_version": "3.10.19 (main, Oct 14 2025, 21:20:23) [MSC v.1944 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\Users\\rui\\unity-projects\\IAV-TP1\\.venv\\Scripts\\mlagents-learn MoveToTarget.yaml --run-id=MoveToTarget_run01 --force",
+        "mlagents_version": "1.1.0",
+        "mlagents_envs_version": "1.1.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.11.0+cpu",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1776430744"
+    },
+    "total": 62.66174160000082,
+    "count": 1,
+    "self": 0.008590900000854162,
+    "children": {
+        "run_training.setup": {
+            "total": 0.12347229999977571,
+            "count": 1,
+            "self": 0.12347229999977571
+        },
+        "TrainerController.start_learning": {
+            "total": 62.52967840000019,
+            "count": 1,
+            "self": 0.00014850000115984585,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 62.52950450000026,
+                    "count": 1,
+                    "self": 62.52950450000026
+                },
+                "TrainerController._save_models": {
+                    "total": 2.539999877626542e-05,
+                    "count": 1,
+                    "self": 2.539999877626542e-05
+                }
+            }
+        }
+    }
+}
